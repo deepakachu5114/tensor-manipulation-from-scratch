@@ -29,8 +29,8 @@ Drawing from the original implementation, the core logic operates in two main ph
 
 *   **Reshaping:** Achieved implicitly through the combination of other operations (splitting, merging, dropping, inserting, transposing) determined by the pattern.
 *   **Transposition:** Handled by `np.transpose` using a permutation calculated during recipe preparation. 
-*   **Splitting Axes:** Implemented via the *initial* `np.reshape`. Parentheses on the left side of the pattern (e.g., `(h w)`) signal splitting, requiring necessary axis lengths in `**axes_lengths` to determine the target shape for this reshape.
-*   **Merging Axes:** Implemented via the *final* `np.reshape`. Parentheses on the right side (e.g., `-> (h w)`) signal merging. The sizes inferred or provided for the elementary axes within the parentheses are multiplied to calculate the size of the merged dimension.
+*   **Splitting Axes:** Implemented via `np.reshape`. Parentheses on the left side of the pattern (e.g., `(h w)`) signal splitting, requiring necessary axis lengths in `**axes_lengths` to determine the target shape for this reshape.
+*   **Merging Axes:**  Also implemented via the `np.reshape`. Parentheses on the right side (e.g., `-> (h w)`) signal merging. The sizes inferred or provided for the elementary axes within the parentheses are multiplied to calculate the size of the merged dimension.
 *   **Repeating Axes:** Handles creating new axes on the right side (e.g., `a 1 c -> a b c`) like in the `repeat` function of the `einops` library. This is done by broadcasting the size-1 source axis to the new size, which is inferred or provided in `**axes_lengths`.
 
 ## Parsing (`ParsedExpression`)
@@ -50,19 +50,19 @@ Drawing from the original implementation, the core logic operates in two main ph
 
 ## Optimization & Design
 
-*   **Caching:** The primary optimization is caching the `RearrangeRecipe` via `functools.lru_cache` in `_prepare_rearrange_recipe`, dramatically speeding up repeated calls.
-*   **Readability:** Helper functions (like `_determine_drops_and_mapping`) are used to structure the complex recipe preparation logic. The two-pass analysis in `_prepare...` simplifies handling the interaction between dropped axes and repetition sources.
+The code is largely modular, utilises OOPs for parsing, testing, creating recipe instances, and is redable with docstrings and comments explaining the logic. 
+* The primary optimization is caching the `RearrangeRecipe` via `functools.lru_cache` in `_prepare_rearrange_recipe`, dramatically speeding up repeated calls. This is inspired by original implementation's caching strategy.
 
 ## Unit Tests
 
-*   Comprehensive unit tests are provided using Python's `unittest` module.
+*   Comprehensive unit tests are provided using Python's `unittest` module. 17 unit tests with with 50+ patterns covered.  
 *   Tests cover:
     *   Basic operations (transpose, split, merge, add/drop 1, repeat).
     *   Ellipsis usage.
     *   Edge cases (scalar input, empty arrays, zero-sized dimensions).
     *   Complex combined patterns.
     *   Extensive error condition checking for invalid patterns and shape mismatches.
-*   Where available, test results are compared against the reference `einops` library implementation for correctness using `np.testing.assert_array_equal`.
+*   Where available, test results are compared against the reference `einops` library implementation for correctness using `np.testing.assert_array_equal`.\
 
 ## How to Run
 
@@ -84,3 +84,6 @@ Drawing from the original implementation, the core logic operates in two main ph
 ![comparison between custom and original implementations](./assets/comparison_plot.png)
 
 Although the custom implementation is not as fast as the original one, it performs competitively for all use cases and handles all edge cases.
+
+# AI usage acknowledgement
+Grok 3 and Gemini 2.5 were used for extensive test case generation, documentation and debugging. All AI generated content was reviewed and modified by me to ensure good practices, correctness and clarity. 
