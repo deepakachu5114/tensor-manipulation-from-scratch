@@ -1,6 +1,6 @@
 # Custom Einops `rearrange` Implementation for NumPy
 
-Submitted by: Deepak, AI Junior @ NITK, Surathkal
+Submitted by: Deepak, AI Junior @ NITK, Surathkal <br>
 Linkedin: [Profile](https://www.linkedin.com/in/deepakcnayak/)
 
 ## Approach
@@ -32,7 +32,7 @@ Drawing from the original implementation, the core logic operates in two main ph
 *   **Transposition:** Handled by `np.transpose` using a permutation calculated during recipe preparation. 
 *   **Splitting Axes:** Implemented via `np.reshape`. Parentheses on the left side of the pattern (e.g., `(h w)`) signal splitting, requiring necessary axis lengths in `**axes_lengths` to determine the target shape for this reshape.
 *   **Merging Axes:**  Also implemented via the `np.reshape`. Parentheses on the right side (e.g., `-> (h w)`) signal merging. The sizes inferred or provided for the elementary axes within the parentheses are multiplied to calculate the size of the merged dimension.
-*   **Repeating Axes:** Handles creating new axes on the right side (e.g., `a 1 c -> a b c`) like in the `repeat` function of the `einops` library. This is done by broadcasting the size-1 source axis to the new size, which is inferred or provided in `**axes_lengths`.
+*   **Repeating Axes:** Handles creating new axes on the right side (e.g., `a 1 c -> a b c`) like in the `repeat` function of the `einops` library. This is done by broadcasting the size-1 source axis to the new size, which is inferred or provided in `**axes_lengths`. However , thiis implementation does not support all the features of the `repeat` function. For example, it does not support repeating multiple axes at once or repeating an axis with a size greater than 1.
 
 ## Parsing (`ParsedExpression`)
 
