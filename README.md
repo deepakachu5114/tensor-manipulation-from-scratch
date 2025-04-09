@@ -25,6 +25,7 @@ Drawing from the original implementation, the core logic operates in two main ph
         4.  Optional `np.expand_dims` (for inserting new dimensions of size 1).
         5.  Optional `np.broadcast_to` (for repeating axes / implementing newly created axes from a size-1 source).
         6.  Final `reshape` (for merging axes into the desired output structure).
+    * Importantly, while the logic accounts for this full sequence, the recipe optimization ensures that for many common rearrangement tasks (like simple transpositions, splitting a single axis, merging adjacent axes, or repeating one axis), the entire transformation often boils down to executing just **one** of these core NumPy operations at runtime. This maximizes efficiency by leveraging NumPy's optimized C implementations directly. More intricate patterns naturally might require a combination of these steps.
 
 ## Supported Operations 
 
@@ -53,6 +54,7 @@ Drawing from the original implementation, the core logic operates in two main ph
 
 The code is largely modular, utilises OOPs for parsing, testing, creating recipe instances, and is redable with docstrings and comments explaining the logic. 
 * The primary optimization is caching the `RearrangeRecipe` via `functools.lru_cache` in `_prepare_rearrange_recipe`, dramatically speeding up repeated calls. This is inspired by original implementation's caching strategy.
+* Most transformations are done in a single step using NumPy's optimized functions, avoiding unnecessary intermediate copies. Most time is spent on the initial parsing and recipe preparation and caching, making sure we use as few NumPy operations as possible. **Dry runs tracing the operations are provided in the end**
 
 ## Unit Tests
 
@@ -85,6 +87,70 @@ The code is largely modular, utilises OOPs for parsing, testing, creating recipe
 ![comparison between custom and original implementations](./assets/comparison_plot.png)
 
 Although the custom implementation is not as fast as the original one, it performs competitively for all use cases and handles all edge cases.
+
+# Dry runs - NumPy operations tracing
+The following dry runs are based on the patterns and shapes used in the unit tests. The goal is to trace the number of NumPy operations performed for each pattern.
+We need to trace which of these conditional blocks are entered and executed within the `rearrange` function body for each example:
+
+1.  **Initial Reshape (`recipe.needs_initial_reshape`)**
+2.  **Drop Anon '1's (`recipe.dropped_anon1_indices`)** - uses `np.squeeze`
+3.  **Transposition (`recipe.axes_permutation`)** - uses `np.transpose`
+4.  **Insert '1's (`recipe.inserted_1_indices`)** - uses `np.expand_dims` (potentially multiple times in a loop)
+5.  **Repetition (`repetition_needed`)** - uses `np.broadcast_to`
+6.  **Final Reshape (`final_target_shape != current_tensor.shape`)** - uses `np.reshape`
+
+Let's trace:
+
+1.  **Transpose (`'h w -> w h'`)**
+    *   Input Shape: `(3, 4)`
+    *   1. Initial Reshape? No.
+    *   2. Squeeze? No.
+    *   3. Transpose? Yes (`axes=(1, 0)`). Tensor becomes `(4, 3)`.
+    *   4. Expand Dims? No.
+    *   5. Broadcast? No.
+    *   6. Final Reshape? No (already `(4, 3)`).
+    *   **Total NumPy Ops: 1** (`transpose`)
+
+2.  **Split an axis (`'(h w) c -> h w c'`, `h=3`)**
+    *   Input Shape: `(12, 10)`
+    *   1. Initial Reshape? Yes (`reshape((3, 4, 10))`). Tensor becomes `(3, 4, 10)`.
+    *   2. Squeeze? No.
+    *   3. Transpose? No (permutation is `(0, 1, 2)`).
+    *   4. Expand Dims? No.
+    *   5. Broadcast? No.
+    *   6. Final Reshape? No (already `(3, 4, 10)`).
+    *   **Total NumPy Ops: 1** (`reshape`)
+
+3.  **Merge axes (`'a b c -> (a b) c'`)**
+    *   Input Shape: `(3, 4, 5)`
+    *   1. Initial Reshape? No.
+    *   2. Squeeze? No.
+    *   3. Transpose? No (permutation is `(0, 1, 2)`).
+    *   4. Expand Dims? No.
+    *   5. Broadcast? No.
+    *   6. Final Reshape? Yes (`reshape((12, 5))`). Tensor becomes `(12, 5)`.
+    *   **Total NumPy Ops: 1** (`reshape`)
+
+4.  **Repeat an axis (`'a 1 c -> a b c'`, `b=4`)**
+    *   Input Shape: `(3, 1, 5)`
+    *   1. Initial Reshape? No (left side `a 1 c` matches `ndim=3`).
+    *   2. Squeeze? No (the `1` is used as source, not dropped).
+    *   3. Transpose? No (permutation `(0, 1, 2)`).
+    *   4. Expand Dims? No.
+    *   5. Broadcast? Yes (`broadcast_to((3, 4, 5))`). Tensor becomes `(3, 4, 5)`.
+    *   6. Final Reshape? No (already `(3, 4, 5)`).
+    *   **Total NumPy Ops: 1** (`broadcast_to`)
+
+5.  **Handle batch dimensions (`'... h w -> ... (h w)'`)**
+    *   Input Shape: `(2, 3, 4, 5)`
+    *   1. Initial Reshape? No (ellipsis expands).
+    *   2. Squeeze? No.
+    *   3. Transpose? No (permutation `(0, 1, 2, 3)`).
+    *   4. Expand Dims? No.
+    *   5. Broadcast? No.
+    *   6. Final Reshape? Yes (`reshape((2, 3, 20))`). Tensor becomes `(2, 3, 20)`.
+    *   **Total NumPy Ops: 1** (`reshape`)
+
 
 # AI usage acknowledgement
 Grok 3 and Gemini 2.5 were used for extensive test case generation, documentation and debugging. All AI generated content was reviewed and modified by me to ensure good practices, correctness and clarity. 
