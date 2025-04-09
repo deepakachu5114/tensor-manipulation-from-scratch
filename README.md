@@ -25,7 +25,7 @@ Drawing from the original implementation, the core logic operates in two main ph
         4.  Optional `np.expand_dims` (for inserting new dimensions of size 1).
         5.  Optional `np.broadcast_to` (for repeating axes / implementing newly created axes from a size-1 source).
         6.  Final `reshape` (for merging axes into the desired output structure).
-    * Importantly, while the logic accounts for this full sequence, the recipe optimization ensures that for many common rearrangement tasks (like simple transpositions, splitting a single axis, merging adjacent axes, or repeating one axis), the entire transformation often boils down to executing just **one** of these core NumPy operations at runtime. This maximizes efficiency by leveraging NumPy's optimized C implementations directly. More intricate patterns naturally might require a combination of these steps.
+   * Recipe optimization ensures many common tasks (e.g., transpositions, splits, merges, or repeats) often require just **one** NumPy operation at runtime.
 
 ## Supported Operations 
 
@@ -99,7 +99,7 @@ We need to trace which of these conditional blocks are entered and executed with
 5.  **Repetition (`repetition_needed`)** - uses `np.broadcast_to`
 6.  **Final Reshape (`final_target_shape != current_tensor.shape`)** - uses `np.reshape`
 
-Let's trace:
+Tracing:
 
 1.  **Transpose (`'h w -> w h'`)**
     *   Input Shape: `(3, 4)`
