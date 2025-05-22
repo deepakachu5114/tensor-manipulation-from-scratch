@@ -4,6 +4,7 @@ import warnings
 
 from custom_rearrange_implementation import rearrange, EinopsError
 
+
 try:
     from einops import rearrange as einops_rearrange
     EINOTS_AVAILABLE = True
