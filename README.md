@@ -1,7 +1,5 @@
 # Custom Einops `rearrange` Implementation for NumPy
 
-Submitted by: Deepak, AI Junior @ NITK, Surathkal <br>
-Linkedin: [Profile](https://www.linkedin.com/in/deepakcnayak/)
 
 ## Approach
 
